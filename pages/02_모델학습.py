@@ -318,7 +318,7 @@ with tab1:
             mse = mean_squared_error(y_test, y_pred)
             mae = mean_absolute_error(y_test, y_pred)
             r2 = r2_score(y_test, y_pred)
-            rmse = np.sqrt(mse)
+            rmse = np.sqrt(mse)  # RMSE는 MSE의 제곱근
             
             col1.metric("R² Score", f"{r2:.3f}")
             col2.metric("RMSE", f"{rmse:.3f}")
