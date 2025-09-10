@@ -215,4 +215,5 @@ with tab3:
         else:
             n_classes = 2
         
-        random_state = st.number
+        random_state = st.number_input("랜덤 시드", min_value=0, max_value=100, value=42)
+
