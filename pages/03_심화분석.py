@@ -7,311 +7,240 @@ from plotly.subplots import make_subplots
 import pickle
 from datetime import datetime
 
-# 페이지 설정
+# Page configuration
 st.set_page_config(
-    page_title="심화 분석",
+    page_title="Advanced Analysis",
     page_icon="📈",
     layout="wide"
 )
 
-st.title("📈 Step 4: 심화 분석 및 인사이트")
-st.markdown("### 모델 성능을 깊이 있게 분석하고 개선 방향을 찾아봅니다")
+st.title("📈 Step 4: Advanced Analysis and Insights")
+st.markdown("### Deep analysis of model performance and finding improvement directions")
 
-# 데이터 및 모델 체크
+# Check data and models
 if 'data' not in st.session_state or st.session_state.data is None:
-    st.error("⚠️ 데이터가 없습니다. 데이터 준비부터 시작해주세요.")
-    if st.button("데이터 준비 페이지로 이동"):
-        st.switch_page("pages/1_📊_데이터_준비.py")
+    st.error("⚠️ No data found. Please start with data preparation.")
+    if st.button("Go to Data Preparation"):
+        st.switch_page("pages/1_data_preparation.py")
     st.stop()
 
 if 'models' not in st.session_state or not st.session_state.models:
-    st.warning("⚠️ 학습된 모델이 없습니다. 먼저 모델을 학습시켜주세요.")
-    if st.button("모델 학습 페이지로 이동"):
-        st.switch_page("pages/3_🤖_모델_학습.py")
+    st.warning("⚠️ No trained models found. Please train a model first.")
+    if st.button("Go to Model Training"):
+        st.switch_page("pages/3_model_training.py")
     st.stop()
 
-# 교육 콘텐츠
-with st.expander("📚 심화 분석의 중요성", expanded=True):
+# Educational content
+with st.expander("📚 Importance of Advanced Analysis", expanded=True):
     st.markdown("""
-    ### 🎯 왜 심화 분석이 필요한가?
+    ### 🎯 Why do we need advanced analysis?
     
-    단순한 정확도 수치만으로는 모델의 진짜 성능을 알 수 없습니다.
+    Simple accuracy metrics alone cannot tell us the real performance of a model.
     
-    **심화 분석을 통해 알 수 있는 것들:**
+    **What we can learn through advanced analysis:**
     
-    1. **모델의 약점**
-       - 어떤 상황에서 틀리는가?
-       - 특정 클래스나 범위에서 성능이 떨어지는가?
+    1. **Model weaknesses**
+       - When does it make mistakes?
+       - Does performance drop for specific classes or ranges?
     
-    2. **개선 가능성**
-       - 더 많은 데이터가 필요한가?
-       - 다른 특성이 필요한가?
-       - 모델 복잡도 조정이 필요한가?
+    2. **Improvement potential**
+       - Do we need more data?
+       - Do we need different features?
+       - Should we adjust model complexity?
     
-    3. **실제 배포 가능성**
-       - 예측의 신뢰도는 어느 정도인가?
-       - 오류의 비용은 얼마나 되는가?
-       - 설명 가능한 예측인가?
+    3. **Deployment readiness**
+       - How reliable are the predictions?
+       - What is the cost of errors?
+       - Are the predictions explainable?
     
-    4. **비즈니스 인사이트**
-       - 어떤 요인이 가장 중요한가?
-       - 예상과 다른 패턴이 있는가?
-       - 실행 가능한 통찰이 있는가?
+    4. **Business insights**
+       - Which factors are most important?
+       - Are there unexpected patterns?
+       - What actionable insights exist?
     """)
 
 st.divider()
 
-# 분석 탭
+# Analysis tabs
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "🔬 오류 분석",
-    "📊 학습 곡선",
-    "🎲 예측 불확실성",
-    "🔄 교차 검증 심화",
-    "💡 개선 제안"
+    "🔬 Error Analysis",
+    "📊 Learning Curves",
+    "🎲 Prediction Uncertainty",
+    "🔄 Cross Validation",
+    "💡 Improvement Suggestions"
 ])
 
-# 데이터 준비
+# Data preparation
 df = st.session_state.data.copy()
 target_col = st.session_state.target_column
 problem_type = st.session_state.data_type
 
+# Prepare data for analysis
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+
+X = df.drop(columns=[target_col])
+y = df[target_col]
+
+# Encode target if needed
+if problem_type == 'classification' and y.dtype == 'object':
+    le = LabelEncoder()
+    y = le.fit_transform(y)
+
+# Select numeric columns only
+numeric_cols = X.select_dtypes(include=[np.number]).columns.tolist()
+X = X[numeric_cols]
+
+# Split data
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42,
+    stratify=y if problem_type == 'classification' else None
+)
+
+# Scale features
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
 with tab1:
-    st.markdown("## 🔬 오류 분석 (Error Analysis)")
-    st.markdown("모델이 어떤 경우에 틀리는지 패턴을 찾아봅니다.")
+    st.markdown("## 🔬 Error Analysis")
+    st.markdown("Find patterns in model mistakes")
     
-    # 모델 선택
+    # Model selection
     model_name = st.selectbox(
-        "분석할 모델",
+        "Select model to analyze",
         list(st.session_state.models.keys()),
         key="error_analysis_model"
     )
     
-    if model_name:
-        model_info = st.session_state.models[model_name]
+    if model_name and 'model' in st.session_state.models[model_name]:
+        model = st.session_state.models[model_name]['model']
         
-        # 예측값이 있는지 확인
-        if 'y_pred' in model_info:
-            y_pred = model_info['y_pred']
+        # Make predictions
+        y_pred = model.predict(X_test_scaled)
+        
+        if problem_type == 'classification':
+            st.markdown("### 🎯 Classification Error Analysis")
             
-            # 실제 테스트 데이터 필요 (재생성)
-            from sklearn.model_selection import train_test_split
-            from sklearn.preprocessing import StandardScaler, LabelEncoder
+            # Find misclassified samples
+            misclassified_mask = y_test != y_pred
+            misclassified_indices = np.where(misclassified_mask)[0]
             
-            X = df.drop(columns=[target_col])
-            y = df[target_col]
+            col1, col2, col3 = st.columns(3)
             
-            if problem_type == 'classification' and y.dtype == 'object':
-                le = LabelEncoder()
-                y = le.fit_transform(y)
+            with col1:
+                st.metric("Total Test Samples", len(y_test))
+            with col2:
+                st.metric("Misclassified Samples", len(misclassified_indices))
+            with col3:
+                error_rate = len(misclassified_indices) / len(y_test) * 100
+                st.metric("Error Rate", f"{error_rate:.1f}%")
             
-            numeric_cols = X.select_dtypes(include=[np.number]).columns.tolist()
-            X = X[numeric_cols]
-            
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.2, random_state=42,
-                stratify=y if problem_type == 'classification' else None
-            )
-            
-            if problem_type == 'classification':
-                st.markdown("### 🎯 분류 오류 분석")
+            if len(misclassified_indices) > 0:
+                # Misclassification patterns
+                st.markdown("#### Misclassification Patterns")
                 
-                # 오분류 샘플 찾기
-                misclassified_mask = y_test != y_pred
-                misclassified_indices = np.where(misclassified_mask)[0]
+                misclass_df = pd.DataFrame({
+                    'Actual': y_test[misclassified_mask],
+                    'Predicted': y_pred[misclassified_mask]
+                })
                 
-                col1, col2, col3 = st.columns(3)
+                # Count misclassification pairs
+                confusion_pairs = misclass_df.groupby(['Actual', 'Predicted']).size().reset_index(name='Count')
+                confusion_pairs = confusion_pairs.sort_values('Count', ascending=False)
                 
-                with col1:
-                    st.metric("전체 테스트 샘플", len(y_test))
-                with col2:
-                    st.metric("오분류 샘플", len(misclassified_indices))
-                with col3:
-                    st.metric("오류율", f"{len(misclassified_indices)/len(y_test)*100:.1f}%")
-                
-                if len(misclassified_indices) > 0:
-                    # 오분류 패턴 분석
-                    st.markdown("#### 오분류 패턴")
-                    
-                    misclass_df = pd.DataFrame({
-                        '실제': y_test[misclassified_mask],
-                        '예측': y_pred[misclassified_mask]
-                    })
-                    
-                    # 오분류 매트릭스
-                    confusion_pairs = misclass_df.groupby(['실제', '예측']).size().reset_index(name='횟수')
-                    confusion_pairs = confusion_pairs.sort_values('횟수', ascending=False)
+                # Create bar chart
+                if len(confusion_pairs) > 0:
+                    pairs_labels = []
+                    for _, row in confusion_pairs.head(10).iterrows():
+                        pairs_labels.append(f"{row['Actual']} → {row['Predicted']}")
                     
                     fig = px.bar(
-                        confusion_pairs.head(10),
-                        x='횟수',
-                        y=[f"{row['실제']} → {row['예측']}" for _, row in confusion_pairs.head(10).iterrows()],
+                        x=confusion_pairs.head(10)['Count'].values,
+                        y=pairs_labels,
                         orientation='h',
-                        title="가장 빈번한 오분류 패턴 (실제 → 예측)"
+                        title="Most Frequent Misclassification Patterns (Actual → Predicted)"
                     )
                     st.plotly_chart(fig, use_container_width=True)
-                    
-                    # 오분류 샘플의 특성 분석
-                    st.markdown("#### 오분류 샘플의 특성")
-                    
-                    feature_to_analyze = st.selectbox(
-                        "분석할 특성",
-                        numeric_cols
-                    )
-                    
-                    if feature_to_analyze:
-                        # 정확/오분류 샘플의 특성 분포 비교
-                        fig = go.Figure()
-                        
-                        correct_values = X_test[~misclassified_mask][feature_to_analyze]
-                        incorrect_values = X_test[misclassified_mask][feature_to_analyze]
-                        
-                        fig.add_trace(go.Box(
-                            y=correct_values,
-                            name="정확한 예측",
-                            marker_color='green'
-                        ))
-                        
-                        fig.add_trace(go.Box(
-                            y=incorrect_values,
-                            name="잘못된 예측",
-                            marker_color='red'
-                        ))
-                        
-                        fig.update_layout(
-                            title=f"{feature_to_analyze}의 분포: 정확 vs 오분류",
-                            yaxis_title=feature_to_analyze
-                        )
-                        
-                        st.plotly_chart(fig, use_container_width=True)
-                        
-                        # 통계적 차이
-                        from scipy import stats
-                        
-                        if len(correct_values) > 0 and len(incorrect_values) > 0:
-                            t_stat, p_value = stats.ttest_ind(correct_values, incorrect_values)
-                            
-                            if p_value < 0.05:
-                                st.warning(f"⚠️ {feature_to_analyze}에서 정확/오분류 그룹 간 유의미한 차이가 있습니다 (p={p_value:.4f})")
-                            else:
-                                st.info(f"ℹ️ {feature_to_analyze}에서 정확/오분류 그룹 간 유의미한 차이가 없습니다 (p={p_value:.4f})")
+        
+        else:  # Regression
+            st.markdown("### 📉 Regression Error Analysis")
             
-            else:  # 회귀
-                st.markdown("### 📉 회귀 오차 분석")
-                
-                errors = np.abs(y_test - y_pred)
-                
-                # 오차 분포
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    st.metric("평균 절대 오차", f"{errors.mean():.3f}")
-                with col2:
-                    st.metric("최대 오차", f"{errors.max():.3f}")
-                with col3:
-                    st.metric("오차 표준편차", f"{errors.std():.3f}")
-                
-                # 큰 오차 샘플 분석
-                threshold = st.slider(
-                    "큰 오차 기준 (상위 %)",
-                    5, 30, 10
-                )
-                
-                error_threshold = np.percentile(errors, 100 - threshold)
-                large_error_mask = errors > error_threshold
-                
-                st.markdown(f"#### 상위 {threshold}% 오차 샘플 분석")
-                
-                # 특성별 분석
-                feature_to_analyze = st.selectbox(
-                    "분석할 특성",
-                    numeric_cols,
-                    key="regression_error_feature"
-                )
-                
-                if feature_to_analyze:
-                    fig = go.Figure()
-                    
-                    fig.add_trace(go.Scatter(
-                        x=X_test[feature_to_analyze],
-                        y=errors,
-                        mode='markers',
-                        marker=dict(
-                            color=large_error_mask,
-                            colorscale=['blue', 'red'],
-                            size=8,
-                            opacity=0.6
-                        ),
-                        text=[f"오차: {e:.2f}" for e in errors],
-                        name="오차"
-                    ))
-                    
-                    fig.add_hline(
-                        y=error_threshold,
-                        line_dash="dash",
-                        line_color="red",
-                        annotation_text=f"상위 {threshold}% 기준선"
-                    )
-                    
-                    fig.update_layout(
-                        title=f"{feature_to_analyze} vs 예측 오차",
-                        xaxis_title=feature_to_analyze,
-                        yaxis_title="절대 오차"
-                    )
-                    
-                    st.plotly_chart(fig, use_container_width=True)
+            errors = np.abs(y_test - y_pred)
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.metric("Mean Absolute Error", f"{errors.mean():.3f}")
+            with col2:
+                st.metric("Max Error", f"{errors.max():.3f}")
+            with col3:
+                st.metric("Error Std Dev", f"{errors.std():.3f}")
+            
+            # Error distribution
+            fig = px.histogram(
+                errors,
+                nbins=30,
+                title="Error Distribution"
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
 with tab2:
-    st.markdown("## 📊 학습 곡선 분석")
-    st.markdown("데이터 크기와 모델 복잡도가 성능에 미치는 영향을 분석합니다.")
+    st.markdown("## 📊 Learning Curve Analysis")
+    st.markdown("Analyze the impact of data size and model complexity on performance")
     
     analysis_type = st.radio(
-        "분석 유형",
-        ["학습 데이터 크기", "모델 복잡도"]
+        "Analysis Type",
+        ["Training Data Size", "Model Complexity"]
     )
     
-    if analysis_type == "학습 데이터 크기":
-        st.markdown("### 📈 학습 곡선 (Learning Curve)")
-        st.info("데이터가 더 많으면 성능이 향상될까요?")
+    if analysis_type == "Training Data Size":
+        st.markdown("### 📈 Learning Curve")
+        st.info("Will more data improve performance?")
         
         selected_model = st.selectbox(
-            "분석할 모델",
+            "Select model to analyze",
             list(st.session_state.models.keys()),
             key="learning_curve_model"
         )
         
-        if st.button("학습 곡선 생성"):
-            with st.spinner("학습 곡선 생성 중..."):
+        if st.button("Generate Learning Curve"):
+            with st.spinner("Generating learning curve..."):
                 from sklearn.model_selection import learning_curve
                 
                 model = st.session_state.models[selected_model]['model']
                 
-                # 학습 곡선 계산
+                # Calculate learning curve
                 train_sizes = np.linspace(0.1, 1.0, 10)
                 
+                # Create new instance of the model
+                model_class = type(model)
+                new_model = model_class()
+                
                 train_sizes_abs, train_scores, val_scores = learning_curve(
-                    model.__class__(),  # 새 인스턴스 생성
-                    X_train, y_train,
+                    new_model,
+                    X_train_scaled, y_train,
                     train_sizes=train_sizes,
                     cv=5,
                     scoring='accuracy' if problem_type == 'classification' else 'r2',
                     n_jobs=-1
                 )
                 
-                # 평균과 표준편차
+                # Calculate mean and std
                 train_mean = train_scores.mean(axis=1)
                 train_std = train_scores.std(axis=1)
                 val_mean = val_scores.mean(axis=1)
                 val_std = val_scores.std(axis=1)
                 
-                # 시각화
+                # Visualization
                 fig = go.Figure()
                 
-                # 훈련 점수
+                # Training scores
                 fig.add_trace(go.Scatter(
                     x=train_sizes_abs,
                     y=train_mean,
                     mode='lines+markers',
-                    name='훈련 점수',
+                    name='Training Score',
                     line=dict(color='blue'),
                     error_y=dict(
                         type='data',
@@ -320,12 +249,12 @@ with tab2:
                     )
                 ))
                 
-                # 검증 점수
+                # Validation scores
                 fig.add_trace(go.Scatter(
                     x=train_sizes_abs,
                     y=val_mean,
                     mode='lines+markers',
-                    name='검증 점수',
+                    name='Validation Score',
                     line=dict(color='red'),
                     error_y=dict(
                         type='data',
@@ -335,25 +264,267 @@ with tab2:
                 ))
                 
                 fig.update_layout(
-                    title="학습 곡선: 데이터 크기에 따른 성능",
-                    xaxis_title="훈련 데이터 크기",
-                    yaxis_title="점수",
+                    title="Learning Curve: Performance vs Training Data Size",
+                    xaxis_title="Training Data Size",
+                    yaxis_title="Score",
                     hovermode='x unified'
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # 해석
+                # Interpretation
                 gap = train_mean[-1] - val_mean[-1]
                 
                 if gap > 0.1:
                     st.warning("""
-                    ⚠️ **과적합 징후**
-                    - 훈련과 검증 점수 차이가 큽니다
-                    - 해결책: 정규화 강화, 더 많은 데이터, 모델 단순화
+                    ⚠️ **Signs of Overfitting**
+                    - Large gap between training and validation scores
+                    - Solutions: Increase regularization, get more data, simplify model
                     """)
                 elif val_mean[-1] < 0.7:
                     st.warning("""
-                    ⚠️ **과소적합 징후**
-                    - 전반적으로 성능이 낮습니다
-                    - 해결책: 모델 복잡도 증
+                    ⚠️ **Signs of Underfitting**
+                    - Overall performance is low
+                    - Solutions: Increase model complexity, add features, try different algorithms
+                    """)
+                else:
+                    st.success("""
+                    ✅ **Good Learning**
+                    - Training and validation scores are converging
+                    - Slight improvement possible with more data
+                    """)
+
+with tab3:
+    st.markdown("## 🎲 Prediction Uncertainty Analysis")
+    st.markdown("Analyze how confident the model is in its predictions")
+    
+    # Models with probability predictions
+    prob_models = []
+    for m_name, m_info in st.session_state.models.items():
+        if 'model' in m_info and hasattr(m_info['model'], 'predict_proba'):
+            prob_models.append(m_name)
+    
+    if prob_models and problem_type == 'classification':
+        selected_model = st.selectbox(
+            "Select model to analyze",
+            prob_models,
+            key="uncertainty_model"
+        )
+        
+        if selected_model:
+            model = st.session_state.models[selected_model]['model']
+            
+            # Probability predictions
+            y_proba = model.predict_proba(X_test_scaled)
+            y_pred = model.predict(X_test_scaled)
+            
+            # Maximum probability (confidence)
+            max_proba = y_proba.max(axis=1)
+            
+            st.markdown("### 📊 Prediction Confidence Distribution")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Confidence histogram
+                fig = px.histogram(
+                    max_proba,
+                    nbins=30,
+                    title="Prediction Confidence Distribution",
+                    labels={'value': 'Confidence', 'count': 'Frequency'}
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            
+            with col2:
+                # Accuracy by confidence
+                st.markdown("#### Actual Accuracy by Confidence")
+                st.info("Higher confidence should mean higher accuracy")
+    
+    else:
+        st.info("Train a classification model with probability predictions to analyze uncertainty")
+
+with tab4:
+    st.markdown("## 🔄 Cross Validation Analysis")
+    st.markdown("Evaluate model stability with different validation strategies")
+    
+    cv_model = st.selectbox(
+        "Select model to analyze",
+        list(st.session_state.models.keys()),
+        key="cv_model"
+    )
+    
+    cv_strategy = st.selectbox(
+        "Cross Validation Strategy",
+        ["K-Fold", "Stratified K-Fold"]
+    )
+    
+    n_splits = st.slider("Number of Folds", 3, 10, 5)
+    
+    if st.button("Run Cross Validation"):
+        with st.spinner("Running cross validation..."):
+            from sklearn.model_selection import KFold, StratifiedKFold, cross_validate
+            
+            # Select CV strategy
+            if cv_strategy == "K-Fold":
+                cv = KFold(n_splits=n_splits, shuffle=True, random_state=42)
+            else:
+                cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+            
+            model = st.session_state.models[cv_model]['model']
+            
+            # Define scoring metrics
+            if problem_type == 'classification':
+                scoring = ['accuracy', 'precision_weighted', 'recall_weighted', 'f1_weighted']
+            else:
+                scoring = ['r2', 'neg_mean_squared_error', 'neg_mean_absolute_error']
+            
+            # Create new model instance
+            model_class = type(model)
+            new_model = model_class()
+            
+            # Run cross validation
+            cv_results = cross_validate(
+                new_model,
+                X_train_scaled, y_train,
+                cv=cv,
+                scoring=scoring,
+                return_train_score=True,
+                n_jobs=-1
+            )
+            
+            # Display results
+            st.markdown("### 📊 Cross Validation Results")
+            
+            # Summary statistics
+            summary_data = []
+            for scorer in scoring:
+                train_scores = cv_results[f'train_{scorer}']
+                test_scores = cv_results[f'test_{scorer}']
+                
+                summary_data.append({
+                    'Metric': scorer.replace('_', ' ').title(),
+                    'Train Mean': f"{train_scores.mean():.3f}",
+                    'Train Std': f"{train_scores.std():.3f}",
+                    'Test Mean': f"{test_scores.mean():.3f}",
+                    'Test Std': f"{test_scores.std():.3f}"
+                })
+            
+            summary_df = pd.DataFrame(summary_data)
+            st.dataframe(summary_df, use_container_width=True)
+
+with tab5:
+    st.markdown("## 💡 Improvement Suggestions")
+    st.markdown("Model improvement recommendations based on analysis results")
+    
+    if st.session_state.models:
+        st.markdown("### 🎯 Comprehensive Analysis and Suggestions")
+        
+        # Collect performance of all models
+        model_performances = []
+        
+        for name, info in st.session_state.models.items():
+            if 'model' in info:
+                model = info['model']
+                y_pred = model.predict(X_test_scaled)
+                
+                if problem_type == 'classification':
+                    from sklearn.metrics import accuracy_score
+                    score = accuracy_score(y_test, y_pred)
+                else:
+                    from sklearn.metrics import r2_score
+                    score = r2_score(y_test, y_pred)
+                
+                model_performances.append((name, score))
+        
+        if model_performances:
+            # Best and worst performing models
+            model_performances.sort(key=lambda x: x[1], reverse=True)
+            best_model = model_performances[0]
+            worst_model = model_performances[-1]
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.success(f"**Best Model**: {best_model[0]} ({best_model[1]:.3f})")
+            with col2:
+                st.warning(f"**Worst Model**: {worst_model[0]} ({worst_model[1]:.3f})")
+            
+            # Generate improvement suggestions
+            st.markdown("### 📝 Improvement Recommendations")
+            
+            suggestions = []
+            
+            # Performance-based suggestions
+            if best_model[1] < 0.7:
+                suggestions.append("• Try more complex models (ensemble, neural networks)")
+                suggestions.append("• Perform feature engineering")
+                suggestions.append("• Collect more training data")
+                suggestions.append("• Optimize hyperparameters more thoroughly")
+            elif best_model[1] < 0.85:
+                suggestions.append("• Fine-tune hyperparameters")
+                suggestions.append("• Try ensemble methods")
+                suggestions.append("• Add more relevant features")
+            else:
+                suggestions.append("• Model performance is good!")
+                suggestions.append("• Consider model interpretability")
+                suggestions.append("• Test on more diverse data")
+            
+            # Data-based suggestions
+            if len(df) < 1000:
+                suggestions.append("• Dataset is small - consider data augmentation")
+                suggestions.append("• Use cross-validation for reliable estimates")
+            
+            if len(numeric_cols) < 5:
+                suggestions.append("• Limited features - consider feature engineering")
+                suggestions.append("• Look for additional data sources")
+            
+            for suggestion in suggestions:
+                st.write(suggestion)
+            
+            # Next steps
+            st.markdown("### 🗺️ Next Steps")
+            
+            st.info("""
+            **Short term (immediate)**:
+            - Fine-tune hyperparameters
+            - Try different scaling methods
+            - Experiment with feature selection
+            
+            **Medium term (1-2 weeks)**:
+            - Deep feature engineering
+            - Build ensemble models
+            - Collect more training data
+            
+            **Long term (1+ month)**:
+            - Collaborate with domain experts
+            - Build automated ML pipeline
+            - Deploy and monitor in production
+            """)
+
+# Sidebar
+with st.sidebar:
+    st.markdown("### 📈 Analysis Progress")
+    
+    if 'models' in st.session_state and st.session_state.models:
+        st.success("✅ Models trained")
+        st.info(f"Total models: {len(st.session_state.models)}")
+    
+    st.markdown("### 💡 Analysis Tips")
+    with st.expander("Effective Analysis"):
+        st.markdown("""
+        1. **Find error patterns**
+           - Look for repeated mistakes
+           - Check data quality issues
+        
+        2. **Use learning curves**
+           - Diagnose overfitting/underfitting
+           - Estimate data requirements
+        
+        3. **Manage uncertainty**
+           - Be careful with low confidence predictions
+           - Adjust thresholds for better precision
+        
+        4. **Continuous improvement**
+           - Accumulate small improvements
+           - Keep systematic experiment records
+        """)
